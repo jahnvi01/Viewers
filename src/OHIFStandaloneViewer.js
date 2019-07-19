@@ -5,6 +5,9 @@ import { Route, Switch } from 'react-router-dom';
 import { NProgress } from '@tanem/react-nprogress';
 import { CSSTransition } from 'react-transition-group';
 import { connect } from 'react-redux';
+import { withAuth } from '@okta/okta-react';
+import { Security, SecureRoute, ImplicitCallback } from '@okta/okta-react';
+import Login from './studylist/auth/login';
 import { ViewerbaseDragDropContext } from 'react-viewerbase';
 // import asyncComponent from './components/AsyncComponent.js'
 import IHEInvokeImageDisplay from './routes/IHEInvokeImageDisplay.js';
@@ -34,7 +37,11 @@ import './theme-tide.css';
 //
 
 const reload = () => window.location.reload();
-
+const config = {
+  issuer: 'https://dev-267201.okta.com/oauth2/default',
+  redirect_uri: window.location.origin + '/implicit/callback',
+  client_id: '0oawk1fu8WvqMGdPo356',
+};
 class OHIFStandaloneViewer extends Component {
   state = {
     isLoading: false,
@@ -59,6 +66,9 @@ class OHIFStandaloneViewer extends Component {
   componentWillUnmount() {
     this.unlisten();
   }
+  onAuthRequired = () => {
+    // history.push('/login')
+  };
 
   render() {
     const { user, userManager } = this.props;
@@ -154,30 +164,42 @@ class OHIFStandaloneViewer extends Component {
             </Container>
           )}
         </NProgress>
-        <Route exact path="/silent-refresh.html" onEnter={reload} />
-        <Route exact path="/logout-redirect.html" onEnter={reload} />
-        {!noMatchingRoutes &&
-          routes.map(({ path, Component }) => (
-            <Route key={path} exact path={path}>
-              {({ match }) => (
-                <CSSTransition
-                  in={match !== null}
-                  timeout={300}
-                  classNames="fade"
-                  unmountOnExit
-                  onEnter={() => {
-                    this.setState({ isLoading: true });
-                  }}
-                  onEntered={() => {
-                    this.setState({ isLoading: false });
-                  }}
-                >
-                  {match === null ? <></> : <Component match={match} />}
-                </CSSTransition>
-              )}
-            </Route>
-          ))}
-        {noMatchingRoutes && <NotFound />}
+        <Security
+          issuer={config.issuer}
+          client_id={config.client_id}
+          redirect_uri={config.redirect_uri}
+          onAuthRequired={this.onAuthRequired()}
+        >
+          <Route
+            path="/login"
+            render={() => <Login baseUrl="https://dev-267201.okta.com" />}
+          />
+          <Route path="/implicit/callback" component={ImplicitCallback} />
+          <Route exact path="/silent-refresh.html" onEnter={reload} />
+          <Route exact path="/logout-redirect.html" onEnter={reload} />
+          {!noMatchingRoutes &&
+            routes.map(({ path, Component }) => (
+              <Route key={path} exact path={path}>
+                {({ match }) => (
+                  <CSSTransition
+                    in={match !== null}
+                    timeout={300}
+                    classNames="fade"
+                    unmountOnExit
+                    onEnter={() => {
+                      this.setState({ isLoading: true });
+                    }}
+                    onEntered={() => {
+                      this.setState({ isLoading: false });
+                    }}
+                  >
+                    {match === null ? <></> : <Component match={match} />}
+                  </CSSTransition>
+                )}
+              </Route>
+            ))}
+          {noMatchingRoutes && <NotFound />}
+        </Security>
       </>
     );
   }
@@ -194,6 +216,6 @@ const ConnectedOHIFStandaloneViewer = connect(
   null
 )(OHIFStandaloneViewer);
 
-export default ViewerbaseDragDropContext(
-  withRouter(ConnectedOHIFStandaloneViewer)
+export default withAuth(
+  ViewerbaseDragDropContext(withRouter(ConnectedOHIFStandaloneViewer))
 );

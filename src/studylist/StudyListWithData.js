@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import Dropzone from 'react-dropzone';
 import OHIF from 'ohif-core';
+import { withAuth } from '@okta/okta-react';
 import { withRouter } from 'react-router-dom';
 import { withTranslation } from 'react-i18next';
 import { StudyList } from 'react-viewerbase';
@@ -12,13 +13,20 @@ import ConnectedDicomStorePicker from '../googleCloud/ConnectedDicomStorePicker'
 import filesToStudies from '../lib/filesToStudies.js';
 
 class StudyListWithData extends Component {
-  state = {
-    searchData: {},
-    studies: [],
-    error: null,
-    modalComponentId: null,
-  };
-
+  constructor(props) {
+    super(props);
+    this.state = {
+      searchData: {},
+      studies: [],
+      error: null,
+      modalComponentId: null,
+      authenticated: null,
+      userInfo: {},
+    };
+    this.checkAuthentication = this.checkAuthentication.bind(this);
+    this.login = this.login.bind(this);
+    this.logout = this.logout.bind(this);
+  }
   static propTypes = {
     filters: PropTypes.object,
     patientId: PropTypes.string,
@@ -42,8 +50,17 @@ class StudyListWithData extends Component {
     studyDateTo: StudyListWithData.defaultStudyDateTo,
     sortData: StudyListWithData.defaultSort,
   };
-
-  componentDidMount() {
+  checkAuthentication = async () => {
+    const authenticated = await this.props.auth.isAuthenticated();
+    var accessToken = await this.props.auth.getAccessToken();
+    let userinfo = await this.props.auth.getUser(accessToken);
+    if (authenticated !== this.state.authenticated) {
+      this.setState({ authenticated: authenticated, userInfo: userinfo });
+    }
+  };
+  async componentDidMount() {
+    this.checkAuthentication();
+    this.searchForStudies();
     // TODO: Avoid using timepoints here
     //const params = { studyInstanceUids, seriesInstanceUids, timepointId, timepointsFilter={} };
     if (!this.props.server && window.config.enableGoogleCloudAdapter) {
@@ -58,7 +75,8 @@ class StudyListWithData extends Component {
     }
   }
 
-  componentDidUpdate(prevProps) {
+  async componentDidUpdate(prevProps) {
+    this.checkAuthentication();
     if (!this.state.searchData && !this.state.studies) {
       this.searchForStudies();
     }
@@ -70,7 +88,30 @@ class StudyListWithData extends Component {
       });
     }
   }
+  async componentWillMount() {
+    //  this.checkAuthentication();
+  }
+  login = async () => {
+    this.props.auth.login('/');
+  };
 
+  // logout = async () => {
+  //   this.props.auth.logout('/');
+  // }
+  logout = async () => {
+    // Redirect to '/' after logout
+    //if session is active
+    this.props.auth
+      .logout('/')
+      .then(function(out) {
+        // OHIF.info.log("session is deleted");
+      })
+      .catch(function(error) {
+        // OHIF.info.log("error");
+        //if session is inactive
+        // this.props.auth.login('/');
+      });
+  };
   searchForStudies = (searchData = StudyListWithData.defaultSearchData) => {
     const { server } = this.props;
     const filter = {
@@ -173,6 +214,11 @@ class StudyListWithData extends Component {
   };
 
   render() {
+    const button = this.state.authenticated ? (
+      <button onClick={this.logout}>Logout</button>
+    ) : (
+      <button onClick={this.login}>Login</button>
+    );
     const onDrop = async acceptedFiles => {
       // Do something with the files
       console.warn(acceptedFiles);
@@ -273,10 +319,13 @@ class StudyListWithData extends Component {
     return (
       <>
         <ConnectedHeader home={true} user={this.props.user} />
+        {button}
         {studyList}
       </>
     );
   }
 }
 
-export default withRouter(withTranslation('Common')(StudyListWithData));
+export default withAuth(
+  withRouter(withTranslation('Common')(StudyListWithData))
+);
