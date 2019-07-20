@@ -15,9 +15,10 @@
   },
   "proxy": "http://localhost:8042",
   "scripts": {
+    "heroku-postbuild": "yarn run build:web",
     "cm": "npx git-cz",
-    "dev": "yarn run preBuild && cross-env PORT=5000 react-scripts start",
-    "dev:debug": "cross-env PORT=5000 react-scripts start",
+    "dev": "yarn run preBuild && cross-env PORT=process.env.PORT||5000 react-scripts start",
+    "dev:debug": "cross-env PORT=process.env.PORT||5000 react-scripts start",
     "build:package": "yarn run preBuild && node --max-old-space-size=4096 node_modules/rollup/bin/rollup -c",
     "build:package:ci": "yarn run preBuild && node --max-old-space-size=4096 node_modules/rollup/bin/rollup -c",
     "build:web": "yarn run preBuild && react-scripts --max_old_space_size=4096 build",
@@ -31,7 +32,7 @@
     "test:e2e:scriptTag": "cross-env START_SERVER=true start-server-and-test build:package http-get://localhost:5000/index.umd.js cy:run",
     "staticDeploy": "./generateStaticSite.sh",
     "docs:publish": "./publishStaticSite.sh",
-    "start": "yarn run dev",
+    "start": "yarn run dev && serve -s build",
     "predeploy": "cd example && npm install && yarn run build:package",
     "preBuild": "yarn run version && yarn run copy:webworkers",
     "orthanc:up": "docker-compose -f docker/Nginx-Orthanc/docker-compose.yml up",
@@ -116,7 +117,8 @@
     "redux-logger": "^3.0.6",
     "redux-oidc": "3.1.x",
     "redux-thunk": "^2.3.0",
-    "reselect": "^4.0.0"
+    "reselect": "^4.0.0",
+    "serve": "^11.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.4.5",
