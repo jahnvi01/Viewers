@@ -15,10 +15,9 @@
   "jsnext:main": "dist/index.es.js",
   "proxy": "http://localhost:8042",
   "scripts": {
-    "heroku-postbuild": "yarn run build:web",
     "cm": "npx git-cz",
-    "dev": "yarn run preBuild && cross-env PORT=process.env.PORT||5000",
-    "dev:debug": "cross-env PORT=process.env.PORT||5000",
+    "dev": "yarn run preBuild && cross-env PORT=5000 react-scripts start",
+    "dev:debug": "cross-env PORT=5000 react-scripts start",
     "build:package": "yarn run preBuild && node --max-old-space-size=4096 node_modules/rollup/bin/rollup -c",
     "build:package:ci": "yarn run preBuild && node --max-old-space-size=4096 node_modules/rollup/bin/rollup -c",
     "build:web": "yarn run preBuild && react-scripts --max_old_space_size=4096 build",
